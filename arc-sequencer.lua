@@ -6,51 +6,22 @@
 lfo = require 'lfo'
 -- local util = require 'util'
 
-recording = false
+
 -- script state
 voices = {} -- table to hold state for our three voices
 local focused_voice = 1
-function define_voices()
-   for i = 1, 3 do
-      voices[i] = {
-         file = audio_file,
-         -- these are stored as normalized values (0 to 1)
-         loop_start_norm = 0,
-         loop_end_norm = 1,
-         lfos = lfo.new()
-      }
-   end
-end
+
 -- Hardcoded audio file paths
 -- audio_file = "/home/we/dust/audio/mofongo/vibes-loops/clarinet-vibes-loops.wav"
 audio_file = _path.dust.."audio/mofongo/clarinet-vibes-loops.wav"
 
 local Arcify = include("lib/arcify")
-arcify = Arcify.new()
- 
--- function arcify:update (num, delta) 
---   print(num)
---   print(delta)
--- end
-  
-  
+local arcify = Arcify.new()
+
 function init()
-  counter = metro.init(stop_recording, 1, 1) -- Call stop_recording after 1 second, once.
-  counter.event = function(voice_num)
-    softcut.rec(1, 0)
-    recording = false
-    print(string.format("Stopped recording voice:" .. voice_num))
-  end
-  p = poll.set("amp_in_l")
-    p.callback = function(val)
-      if val > 0.02 then record_to_buffer(1) end
-   end
-  p:start()
   -- create state for each voice
   --myarc = arc.connect()
   print_info(audio_file)
-  softcut.level_input_cut(1,1,1.0)
-  softcut.rec_level(1,1)
   softcut.buffer_clear()
   softcut.buffer_read_stereo(audio_file, 0, 0, -1, 1, 1)
 
@@ -71,17 +42,7 @@ function init()
       period = .5, -- default to a slow rate (frequency in Hz)
       action = function(scaled, raw) softcut.position(i, raw) end
     }
-    -- voices[1].myarclfo = lfo:add{
-    --   shape = 'random',
-    --   min = -100, -- LFO modulates from silent
-    --   max = 100, -- to full volume
-    --   depth = .5,
-    --   period = .5, -- default to a slow rate (frequency in Hz)
-    --   action = function(scaled, raw) lfolog(scaled) end
-    -- }
-    
     voices[i].mylfo:start()
-    -- voices[i].myarclfo:start()
     -- configure softcut for each voice
     softcut.enable(i, 1)
     softcut.buffer(i, 2)
@@ -104,7 +65,7 @@ function init()
     params:add {
         type = "control",
         id = "Loop 1 Start",
-        name = "Start 1",
+        name = "Start",
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
             softcut.loop_start(1, value)
@@ -114,7 +75,7 @@ function init()
     params:add {
         type = "control",
         id = "Loop 1 End",
-        name = "End 1",
+        name = "End",
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
            softcut.loop_end(1, value)
@@ -124,7 +85,7 @@ function init()
     params:add {
         type = "control",
         id = "Loop 2 Start",
-        name = "Start 2",
+        name = "Start",
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
             softcut.loop_start(2, value)
@@ -134,7 +95,7 @@ function init()
     params:add {
         type = "control",
         id = "Loop 2 End",
-        name = "End 2",
+        name = "End",
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
            softcut.loop_end(2, value)
@@ -144,7 +105,7 @@ function init()
     params:add {
         type = "control",
         id = "Loop 3 Start",
-        name = "Start 3",
+        name = "Start",
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
             softcut.loop_start(3, value)
@@ -154,7 +115,7 @@ function init()
     params:add {
         type = "control",
         id = "Loop 3 End",
-        name = "End 3",
+        name = "End",
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
            softcut.loop_end(3, value)
@@ -179,38 +140,20 @@ function init()
     softcut.pan(1,-.5)
     softcut.pan(2,.5)
 end
-function lfolog(scaled)
-  arcify:update(i, scaled) 
-  print(scaled)
-end
+
 
 focused_voice = 1
-function record_to_buffer(voice_num)
-  print("Record to buffer" .. voice_num)
-  if recording then
-     print("break")
-    else
-      -- softcut.buffer_clear(voice_num) -- Clear the specific buffer for the chosen voice
-      softcut.position(voice_num, 0) -- Reset the playhead position to the start for the chosen voice
-      softcut.rec(voice_num, 1)
-      recording = true
-      print("inside record else")
-      counter:start() -- Start the metro (time and count are preset in init)
-    end
-end
+
 -- handle key presses
 function key(n, z)
-  if z == 1 then
-    if n == 2 then
+  if n == 2 and z == 1 then
     focused_voice = (focused_voice % 3) + 1
     redraw()
     arc_refresh()
     print("key 2 pressed, focused voice: " .. focused_voice)
-    elseif n == 3 then
-      record_to_buffer(1)
-    end
   end
 end
+
 -- handle arc encoder turns
 -- function myarc(n, d)
 --   local voice = voices[focused_voice]
