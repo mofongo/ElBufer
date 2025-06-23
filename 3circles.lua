@@ -38,19 +38,22 @@ function init()
   counter = metro.init(stop_recording, 1, 1) -- Call stop_recording after 1 second, once.
   counter.event = function(voice_num)
     softcut.rec(1, 0)
+    softcut.rec_level(1, 0)
     recording = false
     print(string.format("Stopped recording voice:" .. voice_num))
   end
-  p = poll.set("amp_in_l")
-    p.callback = function(val)
-      if val > 0.02 then record_to_buffer(1) end
-   end
-  p:start()
+  -- p = poll.set("amp_in_l")
+  --   p.callback = function(val)
+  --     if val > 0.02 then record_to_buffer(1) end
+  --  end
+  -- p:start()
   -- create state for each voice
   --myarc = arc.connect()
   print_info(audio_file)
   softcut.level_input_cut(1,1,1.0)
-  softcut.rec_level(1,1)
+  softcut.recpre_slew_time (1, .5)
+
+  softcut.rec_level(1,0)
   softcut.buffer_clear()
   softcut.buffer_read_stereo(audio_file, 0, 0, -1, 1, 1)
 
@@ -84,6 +87,7 @@ function init()
     -- voices[i].myarclfo:start()
     -- configure softcut for each voice
     softcut.enable(i, 1)
+    softcut.level_slew_time(1, .25)
     softcut.buffer(i, 2)
     softcut.loop(i, 1)
     softcut.position(i, 0)
@@ -178,7 +182,11 @@ function init()
     -- softcut.level(2,0)
     softcut.pan(1,-.5)
     softcut.pan(2,.5)
-end
+    params:default()
+
+  end
+
+
 function lfolog(scaled)
   arcify:update(i, scaled) 
   print(scaled)
@@ -191,7 +199,8 @@ function record_to_buffer(voice_num)
      print("break")
     else
       -- softcut.buffer_clear(voice_num) -- Clear the specific buffer for the chosen voice
-      softcut.position(voice_num, 0) -- Reset the playhead position to the start for the chosen voice
+      softcut.rec_level(1,1)
+      -- softcut.position(voice_num, 0) -- Reset the playhead position to the start for the chosen voice
       softcut.rec(voice_num, 1)
       recording = true
       print("inside record else")
