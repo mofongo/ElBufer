@@ -1,6 +1,7 @@
 # 3circles
 
-1 buffer, two voices, 2
+1 buffer, two voices, 4 encoders
+[YouTube Demo](https://www.youtube.com/watch?v=cIfsTTv7MLU)
 
 TODO
 1. Rename script 
