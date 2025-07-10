@@ -6,6 +6,15 @@
 lfo = require 'lfo'
 -- local util = require 'util'
 
+tau = math.pi * 2
+VOICES = 4
+positions = {-1,-1,-1,-1}
+modes = {"speed", "pitch"}
+mode = 1
+hold = false
+
+REFRESH_RATE = 0.03
+
 recording = false
 -- script state
 voices = {} -- table to hold state for our three voices
@@ -23,8 +32,9 @@ function define_voices()
 end
 -- Hardcoded audio file paths
 -- audio_file = "/home/we/dust/audio/mofongo/vibes-loops/clarinet-vibes-loops.wav"
-audio_file = _path.dust.."audio/mofongo/clarinet-vibes-loops.wav"
-
+-- audio_file = _path.dust.."audio/mofongo/clarinet-vibes-loops.wav"
+-- audio_file = _path.dust.."audio/mofongo/250424_0045 acoustic casino experimental sounds.wav"
+  audio_file = _path.dust.."audio/mofongo/250413_0042_solo_classical.wav"
 local Arcify = include("lib/arcify")
 arcify = Arcify.new()
  
@@ -67,12 +77,15 @@ function init()
       loop_end_norm = 1,
     }
     voices[i].mylfo = lfo:add{
-      shape = 'random',
+      shape = 'trial',
       min = 0, -- LFO modulates from silent
       max = 1, -- to full volume
       depth = .5,
-      period = .5, -- default to a slow rate (frequency in Hz)
-      action = function(scaled, raw) softcut.position(i, raw) end
+      period = 1, -- default to a slow rate (frequency in Hz)
+      action = function(scaled, raw) 
+        softcut.position(i, raw) 
+        softcut.level(i, scaled) -- Set the level based on LFO output  
+        end
     }
     -- voices[1].myarclfo = lfo:add{
     --   shape = 'random',
