@@ -1,4 +1,4 @@
--- 3Circles
+-- El Bufer
 -- a three-voice looping sampler with arc control
 -- for norns
 
@@ -7,7 +7,6 @@ lfo = require 'lfo'
 -- local util = require 'util'
 
 tau = math.pi * 2
-VOICES = 4
 positions = {-1,-1,-1,-1}
 modes = {"speed", "pitch"}
 mode = 1
@@ -19,24 +18,18 @@ recording = false
 -- script state
 voices = {} -- table to hold state for our three voices
 local focused_voice = 1
-function define_voices()
-   for i = 1, 3 do
-      voices[i] = {
-         file = audio_file,
-         -- these are stored as normalized values (0 to 1)
-         loop_start_norm = 0,
-         loop_end_norm = 1,
-         lfos = lfo.new()
-      }
-   end
-end
+
 -- Hardcoded audio file paths
 -- audio_file = "/home/we/dust/audio/mofongo/vibes-loops/clarinet-vibes-loops.wav"
--- audio_file = _path.dust.."audio/mofongo/clarinet-vibes-loops.wav"
+audio_file = _path.dust.."audio/mofongo/clarinet-vibes-loops.wav"
+print("Using audio file: " .. audio_file)
 -- audio_file = _path.dust.."audio/mofongo/250424_0045 acoustic casino experimental sounds.wav"
-  audio_file = _path.dust.."audio/mofongo/250413_0042_solo_classical.wav"
-local Arcify = include("lib/arcify")
-arcify = Arcify.new()
+  -- audio_file = _path.dust.."audio/mofongo/250413_0042_solo_classical.wav"
+-- local Arcify = include("lib/arcify")
+my_arc = arc.connect()
+
+
+-- arcify = Arcify.new()
  
 -- function arcify:update (num, delta) 
 --   print(num)
@@ -44,14 +37,28 @@ arcify = Arcify.new()
 -- end
   
   
+ arc_is = "totot"
+
 function init()
-  counter = metro.init(stop_recording, 1, 1) -- Call stop_recording after 1 second, once.
-  counter.event = function(voice_num)
-    softcut.rec(1, 0)
-    softcut.rec_level(1, 0)
-    recording = false
-    print(string.format("Stopped recording voice:" .. voice_num))
+  -- detect if arc is connected
+
+ if my_arc.name ~= "none" and my_arc.device ~= nil then
+    print("Arc connected: " .. my_arc.name)
+    arc_is = "supertrue"
+  else
+    print("No Arc connected")
+    arc_is = "bigfalse"
   end
+
+  
+
+  -- counter = metro.init(stop_recording, 1, 1) -- Call stop_recording after 1 second, once.
+  -- counter.event = function(voice_num)
+  --   softcut.rec(1, 0)
+  --   softcut.rec_level(1, 0)
+  --   recording = false
+  --   print(string.format("Stopped recording voice:" .. voice_num))
+  -- end
   -- p = poll.set("amp_in_l")
   --   p.callback = function(val)
   --     if val > 0.02 then record_to_buffer(1) end
@@ -59,7 +66,7 @@ function init()
   -- p:start()
   -- create state for each voice
   --myarc = arc.connect()
-  print_info(audio_file)
+  -- print_info(audio_file)
   softcut.level_input_cut(1,1,1.0)
   softcut.recpre_slew_time (1, .5)
 
@@ -96,7 +103,7 @@ function init()
     --   action = function(scaled, raw) lfolog(scaled) end
     -- }
     
-    voices[i].mylfo:start()
+    -- voices[i].mylfo:start()
     -- voices[i].myarclfo:start()
     -- configure softcut for each voice
     softcut.enable(i, 1)
@@ -179,16 +186,29 @@ function init()
         end
     }
     -- register parameters with arcify
-    arcify:register("Loop 1 Start", 0.01)
-    arcify:register("Loop 1 End", 0.01)
-    arcify:register("Loop 2 Start", 0.01)
-    arcify:register("Loop 2 End", 0.01)
-    arcify:register("Loop 3 Start", 0.01)
-    arcify:register("Loop 3 End", 0.01)
+    for v in pairs(arc.devices) do
+      if arc.devices[v].name ~= nil then
+      arc_is = true
+      print("Arcify initialized, registering parameters.")
+      arcify:register("Loop 1 Start", 0.01)
+      arcify:register("Loop 1 End", 0.01)
+      arcify:register("Loop 2 Start", 0.01)
+      arcify:register("Loop 2 End", 0.01)
+      arcify:register("Loop 3 Start", 0.01)
+      arcify:register("Loop 3 End", 0.01)
 
-    -- after registering all your params run add_params()
-    -- to make them visible in norns params menu
-    arcify:add_params()
+      -- after registering all your params run add_params()
+      -- to make them visible in norns params menu
+      arcify:add_params()
+    else
+      arc_is = false
+      print("Arcify not initialized, skipping parameter registration.")
+    end
+  end
+    
+
+    
+ 
     
     --temp hacks
     softcut.level(3,0)
@@ -345,7 +365,6 @@ function redraw()
   screen.text("active voice>" .. focused_voice)
   screen.update()
 end
-
 function print_info(file)
   if util.file_exists(file) == true then
     local ch, samples, samplerate = audio.file_info(file)
