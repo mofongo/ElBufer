@@ -5,7 +5,7 @@
 
 lfo = require 'lfo'
 -- local util = require 'util'
-
+fileselect = require('fileselect')
 tau = math.pi * 2
 positions = {-1,-1,-1,-1}
 modes = {"speed", "pitch"}
@@ -113,12 +113,28 @@ function init()
 
 
 
-    -- 
-  
-  
-    params:add {
-        type = "control",
-        id = "Loop 1 Start",
+  params:add_file("audio_file", "Audio File", audio_file)
+  params:set_action("audio_file", function(file)
+    if util.file_exists(file) then
+      audio_file = file
+      print("Selected audio file: " .. audio_file)
+      softcut.buffer_clear()
+      softcut.buffer_read_stereo(audio_file, 0, 0, -1, 1, 1)
+      -- Optionally reset loop points for all voices
+      for i = 1, 3 do
+        softcut.loop_start(i, 0)
+        softcut.loop_end(i, 2)
+        voices[i].file = audio_file
+      end
+      redraw()
+    else
+      print("File not found: " .. file)
+    end
+  end)
+
+  params:add {
+      type = "control",
+      id = "Loop 1 Start",
         name = "Start 1",
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
