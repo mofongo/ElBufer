@@ -1,11 +1,19 @@
 -- El Bufer
--- a three-voice looping sampler with arc control
--- for norns
+-- @mofongo
+-- A simple buffer looper, two playback loops, arc compatible
 
 
 lfo = require 'lfo'
 -- local util = require 'util'
 fileselect = require('fileselect')
+
+-- helper function to extract filename from a full path
+function get_filename_from_path(path)
+  if path then
+    return path:match("([^/]+)$") or path
+  end
+  return ""
+end
 tau = math.pi * 2
 positions = {-1,-1,-1,-1}
 modes = {"speed", "pitch"}
@@ -22,7 +30,7 @@ local focused_voice = 1
 -- Hardcoded audio file paths
 -- audio_file = "/home/we/dust/audio/mofongo/vibes-loops/clarinet-vibes-loops.wav"
 audio_file = _path.dust.."audio/mofongo/clarinet-vibes-loops.wav"
-print("Using audio file: " .. audio_file)
+print("Using audio file: " .. get_filename_from_path(audio_file))
 -- audio_file = _path.dust.."audio/mofongo/250424_0045 acoustic casino experimental sounds.wav"
   -- audio_file = _path.dust.."audio/mofongo/250413_0042_solo_classical.wav"
 local Arcify = include("lib/arcify")
@@ -117,7 +125,8 @@ function init()
   params:set_action("audio_file", function(file)
     if util.file_exists(file) then
       audio_file = file
-      print("Selected audio file: " .. audio_file)
+      print("Selected audio file: " .. get_filename_from_path(audio_file))
+
       softcut.buffer_clear()
       softcut.buffer_read_stereo(audio_file, 0, 0, -1, 1, 1)
       -- Optionally reset loop points for all voices
@@ -363,20 +372,23 @@ function key_timer()
 	end
 	f = friction
 end
+
 function redraw()
   screen.clear()
   screen.level(3)
-  screen.font_face(10)
-  screen.font_size(10)
+  screen.font_face(1)
+  screen.font_size(7)
   screen.move(0,50)
-  screen.text("active voice>" .. focused_voice)
+  screen.text("File:")
+  screen.move(0,58)
+  screen.text(get_filename_from_path(audio_file))
   screen.update()
 end
 function print_info(file)
   if util.file_exists(file) == true then
     local ch, samples, samplerate = audio.file_info(file)
     local duration = samples/samplerate
-    print("loading file: "..file)
+    print("loading file: "..get_filename_from_path(file))
     print("  channels:\t"..ch)
     print("  samples:\t"..samples)
     print("  sample rate:\t"..samplerate.."hz")
