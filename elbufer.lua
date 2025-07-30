@@ -4,7 +4,7 @@
 
 
 lfo = require 'lfo'
--- local util = require 'util'
+local util = require 'util'
 fileselect = require('fileselect')
 
 -- helper function to extract filename from a full path
@@ -14,6 +14,19 @@ function get_filename_from_path(path)
   end
   return ""
 end
+
+--- Scales a value from an original range to a new range.
+-- This is a general-purpose mapping function.
+-- @param value The input number to scale.
+-- @param old_min The minimum of the original range.
+-- @param old_max The maximum of the original range.
+-- @param new_min The minimum of the new range.
+-- @param new_max The maximum of the new range.
+-- @return The scaled number.
+function scale_value(value, old_min, old_max, new_min, new_max)
+  return new_min + (new_max - new_min) * ((value - old_min) / (old_max - old_min))
+end
+
 tau = math.pi * 2
 positions = {-1,-1,-1,-1}
 modes = {"speed", "pitch"}
@@ -21,6 +34,13 @@ mode = 1
 hold = false
 
 REFRESH_RATE = 0.03
+
+-- loop values to use in display
+local loop_values = {
+  {start = 0, end_ = 1},
+  {start = 0, end_ = 1}
+}
+
 
 recording = false
 -- script state
@@ -148,7 +168,9 @@ function init()
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
             softcut.loop_start(1, value)
+            loop_values[1].start = value
             redraw()
+            print("Loop 1 Start set to: " .. value)
         end
     }
     params:add {
@@ -158,7 +180,9 @@ function init()
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
            softcut.loop_end(1, value)
+           loop_values[1].end_ = value
             redraw()
+            print("Loop 1 End set to: " .. value)
         end
     }
     params:add {
@@ -168,6 +192,7 @@ function init()
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
             softcut.loop_start(2, value)
+            loop_values[2].start = value
             redraw()
         end
     }
@@ -178,6 +203,7 @@ function init()
         controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
         action = function(value)
            softcut.loop_end(2, value)
+           loop_values[2].end_ = value
             redraw()
         end
     }
@@ -375,13 +401,40 @@ end
 
 function redraw()
   screen.clear()
-  screen.level(3)
-  screen.font_face(1)
+
+  -- Draw loop representations
+  screen.level(15)
+  screen.line_width(2)
   screen.font_size(7)
-  screen.move(0,50)
-  screen.text("File:")
-  screen.move(0,58)
+
+  -- Loop 1
+  screen.move(0, 20)
+  screen.text("L1")
+  -- The controlspec for loop points is 0-5 seconds. We map this to screen width.
+  -- The screen coordinates will go from 15 to 127 to leave room for the label.
+  local start_x1 = scale_value(loop_values[1].start, 0, 5, 15, 127)
+  local end_x1 = scale_value(loop_values[1].end_, 0, 5, 15, 127)
+  screen.move(start_x1, 20)
+  screen.line(end_x1, 20)
+  screen.stroke()
+
+  -- Loop 2
+  screen.move(0, 30)
+  screen.text("L2")
+  local start_x2 = scale_value(loop_values[2].start, 0, 5, 15, 127)
+  print("start_x2: " .. start_x2)
+
+  local end_x2 = scale_value(loop_values[2].end_, 0, 5, 15, 127)
+  print("end_x2: " .. end_x2)
+  screen.move(start_x2, 30)
+  screen.line(end_x2, 30)
+  screen.stroke()
+
+  -- Draw file info text
+  screen.level(8)
+  screen.move(0, 58)
   screen.text(get_filename_from_path(audio_file))
+  screen.stroke()
   screen.update()
 end
 function print_info(file)
