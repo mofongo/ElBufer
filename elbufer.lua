@@ -5,7 +5,6 @@
 
 lfo = require 'lfo'
 local util = require 'util'
-fileselect = require('fileselect')
 
 -- helper function to extract filename from a full path
 function get_filename_from_path(path)
@@ -15,25 +14,10 @@ function get_filename_from_path(path)
   return ""
 end
 
---- Scales a value from an original range to a new range.
--- This is a general-purpose mapping function.
--- @param value The input number to scale.
--- @param old_min The minimum of the original range.
--- @param old_max The maximum of the original range.
--- @param new_min The minimum of the new range.
--- @param new_max The maximum of the new range.
--- @return The scaled number.
+
 function scale_value(value, old_min, old_max, new_min, new_max)
   return new_min + (new_max - new_min) * ((value - old_min) / (old_max - old_min))
 end
-
-tau = math.pi * 2
-positions = {-1,-1,-1,-1}
-modes = {"speed", "pitch"}
-mode = 1
-hold = false
-
-REFRESH_RATE = 0.03
 
 -- loop values to use in display
 local loop_values = {
@@ -59,14 +43,6 @@ my_arc = arc.connect()
 
 arcify = Arcify.new()
  
--- function arcify:update (num, delta) 
---   print(num)
---   print(delta)
--- end
-  
-  
- arc_is = "totot"
-
 function init()
 
   
@@ -267,10 +243,8 @@ function init()
 
     if my_arc.name ~= "none" and my_arc.device ~= nil then
       print("Arc connected: " .. my_arc.name)
-      arc_is = "supertrue"
     else
       print("No Arc connected")
-      arc_is = "bigfalse"
     end
 
     --temp hacks
@@ -282,12 +256,6 @@ function init()
 
   end
 
-
-
-function lfolog(scaled)
-  arcify:update(i, scaled) 
-  print(scaled)
-end
 
 focused_voice = 1
 function record_to_buffer(voice_num)
@@ -316,36 +284,6 @@ function key(n, z)
       record_to_buffer(1)
     end
   end
-end
-
-
-
-
-
-function arc_key(z)
-	if z == 1 then
-		km = metro.new(key_timer,500,1)
-	elseif km then
-		--print("keyshort")
-		metro.stop(km)
-		mode = mode + 1
-		if mode==8 then mode=2 end
-		ps("mode: %s",modetext[mode])
-	else
-		--print("friction off")
-		f = 1
-	end
-end
-
-function key_timer()
-	--print("keylong!")
-	metro.stop(km)
-	km = nil
-	if mode ~= 1 then
-		mode = 1 
-		pset_write(1,c)
-	end
-	f = friction
 end
 
 function redraw()
@@ -381,15 +319,4 @@ function redraw()
   screen.move(0, 58)
   screen.text(get_filename_from_path(audio_file))
   screen.update()
-end
-function print_info(file)
-  if util.file_exists(file) == true then
-    local ch, samples, samplerate = audio.file_info(file)
-    local duration = samples/samplerate
-    print("loading file: "..get_filename_from_path(file))
-    print("  channels:\t"..ch)
-    print("  samples:\t"..samples)
-    print("  sample rate:\t"..samplerate.."hz")
-    print("  duration:\t"..duration.." sec")
-  else print "read_wav(): file not found" end
 end
