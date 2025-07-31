@@ -37,8 +37,8 @@ REFRESH_RATE = 0.03
 
 -- loop values to use in display
 local loop_values = {
-  {start = 0, end_ = 1},
-  {start = 0, end_ = 1}
+  {start = 0, end_ = 2},
+  {start = 0, end_ = 2}
 }
 
 
@@ -165,66 +165,88 @@ function init()
       type = "control",
       id = "Loop 1 Start",
         name = "Start 1",
-        controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
+        controlspec = controlspec.new(0, 5, "lin", 0.01, 0),
         action = function(value)
             softcut.loop_start(1, value)
             loop_values[1].start = value
-            redraw()
-            print("Loop 1 Start set to: " .. value)
+            if value > params:get("Loop 1 End") then
+                params:set("Loop 1 End", value)
+            else
+                redraw()
+            end
         end
     }
     params:add {
         type = "control",
         id = "Loop 1 End",
         name = "End 1",
-        controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
+        controlspec = controlspec.new(0, 5, "lin", 0.01, 2),
         action = function(value)
-           softcut.loop_end(1, value)
-           loop_values[1].end_ = value
-            redraw()
-            print("Loop 1 End set to: " .. value)
+            softcut.loop_end(1, value)
+            loop_values[1].end_ = value
+            if value < params:get("Loop 1 Start") then
+                params:set("Loop 1 Start", value)
+            else
+                redraw()
+            end
         end
     }
     params:add {
         type = "control",
         id = "Loop 2 Start",
         name = "Start 2",
-        controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
+        controlspec = controlspec.new(0, 5, "lin", 0.01, 0),
         action = function(value)
             softcut.loop_start(2, value)
             loop_values[2].start = value
-            redraw()
+            if value > params:get("Loop 2 End") then
+                params:set("Loop 2 End", value)
+            else
+                redraw()
+            end
         end
     }
     params:add {
         type = "control",
         id = "Loop 2 End",
         name = "End 2",
-        controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
+        controlspec = controlspec.new(0, 5, "lin", 0.01, 2),
         action = function(value)
-           softcut.loop_end(2, value)
-           loop_values[2].end_ = value
-            redraw()
+            softcut.loop_end(2, value)
+            loop_values[2].end_ = value
+            if value < params:get("Loop 2 Start") then
+                params:set("Loop 2 Start", value)
+            else
+                redraw()
+            end
         end
     }
     params:add {
         type = "control",
         id = "Loop 3 Start",
         name = "Start 3",
-        controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
+        controlspec = controlspec.new(0, 5, "lin", 0.01, 0),
         action = function(value)
             softcut.loop_start(3, value)
-            redraw()
+            if value > params:get("Loop 3 End") then
+                params:set("Loop 3 End", value)
+            else
+                redraw()
+            end
         end
     }
     params:add {
         type = "control",
         id = "Loop 3 End",
         name = "End 3",
-        controlspec = controlspec.new(0, 5, "lin", 0.01, 0.5),
+        controlspec = controlspec.new(0, 5, "lin", 0.01, 2),
         action = function(value)
-           softcut.loop_end(3, value)
-            redraw()
+            softcut.loop_end(3, value)
+            if value < params:get("Loop 3 Start") then
+                params:set("Loop 3 Start", value)
+            else
+                redraw()
+            end
         end
     }
     -- register parameters with arcify
@@ -295,83 +317,10 @@ function key(n, z)
     end
   end
 end
--- handle arc encoder turns
--- function myarc(n, d)
---   local voice = voices[focused_voice]
---   local sc_voice = focused_voice
---   local redraw_all = false
-
---   -- scale encoder sensitivity
---   d = d / 150
-
---   if n == 1 then -- loop start
---     voice.loop_start_norm = util.clamp(voice.loop_start_norm + d, 0, voice.loop_end_norm)
---     -- *** FIX: convert normalized value to seconds for softcut ***
---     softcut.loop_start(sc_voice, voice.loop_start_norm * 2)
---     redraw_all = true
---   elseif n == 2 then -- loop end
---     voice.loop_end_norm = util.clamp(voice.loop_end_norm + d, voice.loop_start_norm, 1)
---     -- *** FIX: convert normalized value to seconds for softcut ***
---     softcut.loop_end(sc_voice, voice.loop_end_norm * 2)
---     redraw_all = true
---   elseif n == 3 then -- lfo speed (frequency)
---     -- use a logarithmic scale for more musical control over frequency
---     local current_freq = voice.lfo.freq
---     voice.lfo.freq = util.clamp(current_freq * (1 + (d * 2)), 0.01, 20)
---     redraw_all = true
---   end
-
---   if redraw_all then
---     redraw()
---     -- arc_refresh()
---   end
--- end
-
--- function to update all arc leds based on state
 
 
--- old redraw function
--- function redraw()
---   screen.clear()
---   screen.aa(0)
---   screen.line_width(1)
---   screen.text("active voice>" .. focused_voice)
 
---   -- draw info for each voice
---   for i = 1, 3 do
---     local y_pos = 10 + ((i - 1) * 16)
---     -- local file_name = voices[i].file:match("([^/]+)$") or "..."
---     local lfo_freq_formatted = string.format("%.2f", voices[i].lfo.freq)
 
---     -- highlight focused voice
---     if i == focused_voice then
---       screen.level(15)
---       screen.rect(0, y_pos - 8, 128, 14):fill()
---       screen.level(0)
---       screen.move(3, y_pos)
---       screen.text(">" .. i .. ": " .. i)
---       screen.level(15)
---       screen.move(125, y_pos)
---       screen.text_right(lfo_freq_formatted .. "hz")
---     else
---       screen.level(6)
---       screen.move(3, y_pos)
---       screen.text(" " .. i .. ": " .. i)
---       screen.move(125, y_pos)
---       screen.text_right(lfo_freq_formatted .. "hz")
---     end
---   end
-
---   screen.update()
--- end
-
--- -- cleanup on script removal
--- function cleanup()
---   for i=1,3 do
---     if voices[i] and voices[i].lfo then voices[i].lfo:stop() end
---   end
---   arc.cleanup()
--- end
 
 function arc_key(z)
 	if z == 1 then
@@ -422,10 +371,7 @@ function redraw()
   screen.move(0, 30)
   screen.text("L2")
   local start_x2 = scale_value(loop_values[2].start, 0, 5, 15, 127)
-  print("start_x2: " .. start_x2)
-
   local end_x2 = scale_value(loop_values[2].end_, 0, 5, 15, 127)
-  print("end_x2: " .. end_x2)
   screen.move(start_x2, 30)
   screen.line(end_x2, 30)
   screen.stroke()
@@ -434,7 +380,6 @@ function redraw()
   screen.level(8)
   screen.move(0, 58)
   screen.text(get_filename_from_path(audio_file))
-  screen.stroke()
   screen.update()
 end
 function print_info(file)
