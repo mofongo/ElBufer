@@ -1,12 +1,17 @@
--- El Bufer
+-- El Búfer
 -- @mofongo
 -- A simple buffer looper, two playback loops, arc compatible
 
 
+-- ##### LIBRARIES ##### --
 lfo = require 'lfo'
 local util = require 'util'
 
--- helper function to extract filename from a full path
+
+
+-- ##### HELPER FUNCTIONS ##### --
+
+-- Extracts just the filename from a full file path.
 function get_filename_from_path(path)
   if path then
     return path:match("([^/]+)$") or path
@@ -19,7 +24,9 @@ function scale_value(value, old_min, old_max, new_min, new_max)
   return new_min + (new_max - new_min) * ((value - old_min) / (old_max - old_min))
 end
 
--- loop values to use in display
+-- ##### GLOBAL STATE & VARIABLES ##### --
+
+-- Stores start/end values for screen display.
 local loop_values = {
   {start = 0, end_ = 2},
   {start = 0, end_ = 2}
@@ -27,50 +34,37 @@ local loop_values = {
 
 
 recording = false
--- script state
-voices = {} -- table to hold state for our three voices
+
+ -- table to hold state for our three voices
+voices = {}
 local focused_voice = 1
 
--- Hardcoded audio file paths
--- audio_file = "/home/we/dust/audio/mofongo/vibes-loops/clarinet-vibes-loops.wav"
+-- Default audio file path
 audio_file = _path.dust.."audio/mofongo/clarinet-vibes-loops.wav"
 print("Using audio file: " .. get_filename_from_path(audio_file))
 -- audio_file = _path.dust.."audio/mofongo/250424_0045 acoustic casino experimental sounds.wav"
   -- audio_file = _path.dust.."audio/mofongo/250413_0042_solo_classical.wav"
-local Arcify = include("lib/arcify")
+
+
+-- Arc integration.
+  local Arcify = include("lib/arcify")
 my_arc = arc.connect()
 
 
 arcify = Arcify.new()
  
+
+-- ##### INITIALIZATION ##### --
 function init()
 
-  
 
-  -- counter = metro.init(stop_recording, 1, 1) -- Call stop_recording after 1 second, once.
-  -- counter.event = function(voice_num)
-  --   softcut.rec(1, 0)
-  --   softcut.rec_level(1, 0)
-  --   recording = false
-  --   print(string.format("Stopped recording voice:" .. voice_num))
-  -- end
-  -- p = poll.set("amp_in_l")
-  --   p.callback = function(val)
-  --     if val > 0.02 then record_to_buffer(1) end
-  --  end
-  -- p:start()
-  -- create state for each voice
-  --myarc = arc.connect()
-  -- print_info(audio_file)
-  softcut.level_input_cut(1,1,1.0)
-  softcut.recpre_slew_time (1, .5)
-
-  softcut.rec_level(1,0)
+  -- --- Softcut Setup ---
+  -- Load the initial audio file into the buffer.
   softcut.buffer_clear()
   softcut.buffer_read_stereo(audio_file, 0, 0, -1, 1, 1)
 
 
-
+-- Configure softcut parameters for each voice.
   for i = 1, 3 do
     voices[i] = {
       file = audio_file,
@@ -116,7 +110,9 @@ function init()
 
 
 
-
+-- --- Parameter Setup ---
+  -- Create parameters accessible from the norns menu.
+  -- File selection parameter.
   params:add_file("audio_file", "Audio File", audio_file)
   params:set_action("audio_file", function(file)
     if util.file_exists(file) then
@@ -255,7 +251,9 @@ function init()
     params:default()
 
   end
+-- end of INITIALIZATION --
 
+-- ##### HANDLERS ##### --
 
 focused_voice = 1
 function record_to_buffer(voice_num)
