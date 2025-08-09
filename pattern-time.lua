@@ -86,8 +86,10 @@ end
 a = arc.connect()
 
 a.delta = function(n,d)
+
   if n >= 1 and n <= 4 then
     enc_value[n] = enc_value[n] + d
+    print("Updated encoder " .. n .. " value to " .. enc_value[n])
     record_enc_value()
     screen_dirty = true
   end

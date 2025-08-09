@@ -6,6 +6,8 @@
 -- ##### LIBRARIES ##### --
 lfo = require 'lfo'
 local util = require 'util'
+pattern_time = require 'pattern_time' -- use the pattern_time lib in this script
+
 
 
 
@@ -32,31 +34,54 @@ local loop_values = {
   {start = 0, end_ = 2}
 }
 
-
-recording = false
-
  -- table to hold state for our three voices
 voices = {}
 local focused_voice = 1
 
 -- Default audio file path
 audio_file = _path.dust.."audio/mofongo/clarinet-vibes-loops.wav"
-print("Using audio file: " .. get_filename_from_path(audio_file))
--- audio_file = _path.dust.."audio/mofongo/250424_0045 acoustic casino experimental sounds.wav"
-  -- audio_file = _path.dust.."audio/mofongo/250413_0042_solo_classical.wav"
-
 
 -- Arc integration.
-  local Arcify = include("lib/arcify")
-my_arc = arc.connect()
-
-
+local Arcify = include("lib/arcify")
 arcify = Arcify.new()
  
 
 -- ##### INITIALIZATION ##### --
 function init()
 
+  -- pattern time setup
+  enc_pattern = pattern_time.new()
+  enc_pattern.process = parse_enc_pattern
+  pattern_message = "press K3 to start recording"
+  erase_message = "(no pattern recorded)"
+  overdub_message = ""
+
+  screen_dirty = true
+  -- Screen refresh loop to update the UI when screen_dirty is true.
+  screen_timer = clock.run(
+    function()
+      while true do
+        clock.sleep(1/15)
+        if screen_dirty then
+          redraw()
+          screen_dirty = false
+        end
+      end
+    end
+  )
+
+  -- Hook into arcify's delta handler to also update pattern_time
+  local original_delta_handler = arcify.a_.delta
+  arcify.a_.delta = function(n, d)
+    -- First, call arcify's original handler so parameter mapping still works
+    original_delta_handler(n, d)
+    
+    -- If the encoder is not in the range we care about, do nothing.
+    -- Then, add our custom logic for pattern_time
+    if n >= 1 and n <= 4 then
+      record_enc_value()
+    end
+  end
 
   -- --- Softcut Setup ---
   -- Load the initial audio file into the buffer.
@@ -132,6 +157,7 @@ function init()
       print("File not found: " .. file)
     end
   end)
+ 
 
   params:add {
       type = "control",
@@ -235,14 +261,6 @@ function init()
       -- to make them visible in norns params menu
       arcify:add_params()
 
-  -- detect if arc is connected
-
-    if my_arc.name ~= "none" and my_arc.device ~= nil then
-      print("Arc connected: " .. my_arc.name)
-    else
-      print("No Arc connected")
-    end
-
     --temp hacks
     softcut.level(3,0)
     -- softcut.level(2,0)
@@ -255,33 +273,73 @@ function init()
 
 -- ##### HANDLERS ##### --
 
-focused_voice = 1
-function record_to_buffer(voice_num)
-  print("Record to buffer" .. voice_num)
-  if recording then
-     print("break")
+-- Pattern time helpers --
+function record_enc_value()
+  local values_to_record = {}
+  for i = 1, 4 do
+    -- Get the parameter ID mapped to the current encoder
+    local param_id = arcify:param_id_at_encoder(i)
+    if param_id then
+      -- If a parameter is mapped, record its ID and current value
+      values_to_record[i] = { id = param_id, value = params:get(param_id) }
     else
-      -- softcut.buffer_clear(voice_num) -- Clear the specific buffer for the chosen voice
-      softcut.rec_level(1,1)
-      -- softcut.position(voice_num, 0) -- Reset the playhead position to the start for the chosen voice
-      softcut.rec(voice_num, 1)
-      recording = true
-      print("inside record else")
-      counter:start() -- Start the metro (time and count are preset in init)
-    end
-end
--- handle key presses
-function key(n, z)
-  if z == 1 then
-    if n == 2 then
-    focused_voice = (focused_voice % 3) + 1
-    redraw()
-    -- arc_refresh()
-    print("key 2 pressed, focused voice: " .. focused_voice)
-    elseif n == 3 then
-      record_to_buffer(1)
+      -- If no parameter is mapped, record nil
+      values_to_record[i] = nil
     end
   end
+  -- Watch the collected values with pattern_time
+  enc_pattern:watch({ values = values_to_record })
+end
+
+function parse_enc_pattern(data)
+  if data and data.values then
+    for i = 1, 4 do
+      local recorded_param = data.values[i]
+      if recorded_param then
+        params:set(recorded_param.id, recorded_param.value)
+      end
+    end
+  end
+end
+
+-- handle key presses
+function key(n,z)
+  if n == 3 and z == 1 then
+    if enc_pattern.rec == 1 then
+      enc_pattern:rec_stop()
+      enc_pattern:start()
+      pattern_message = "playing, press K3 to stop"
+      erase_message = "press K2 to erase"
+      overdub_message = "hold K1 to overdub"
+    elseif enc_pattern.count == 0 then
+      enc_pattern:rec_start()
+      record_enc_value()
+      pattern_message = "recording, press K3 to stop"
+      erase_message = "press K2 to erase"
+      overdub_message = ""
+    elseif enc_pattern.play == 1 then
+      enc_pattern:stop()
+      pattern_message = "stopped, press K3 to play"
+      erase_message = "press K2 to erase"
+      overdub_message = ""
+    else
+      enc_pattern:start()
+      pattern_message = "playing, press K3 to stop"
+      erase_message = "press K2 to erase"
+      overdub_message = "hold K1 to overdub"
+    end
+  elseif n == 2 and z == 1 then
+    enc_pattern:rec_stop()
+    enc_pattern:stop()
+    enc_pattern:clear()
+    erase_message = "(no pattern recorded)"
+    pattern_message = "press K3 to start recording"
+    overdub_message = ""
+  elseif n == 1 then
+    enc_pattern:set_overdub(z)
+    overdub_message = z == 1 and "overdubbing" or "hold K1 to overdub"
+  end
+  screen_dirty = true
 end
 
 function redraw()
@@ -293,28 +351,37 @@ function redraw()
   screen.font_size(7)
 
   -- Loop 1
-  screen.move(0, 20)
+  screen.move(0, 10)
   screen.text("L1")
   -- The controlspec for loop points is 0-5 seconds. We map this to screen width.
   -- The screen coordinates will go from 15 to 127 to leave room for the label.
   local start_x1 = scale_value(loop_values[1].start, 0, 5, 15, 127)
   local end_x1 = scale_value(loop_values[1].end_, 0, 5, 15, 127)
-  screen.move(start_x1, 20)
-  screen.line(end_x1, 20)
+  screen.move(start_x1, 10)
+  screen.line(end_x1, 10)
   screen.stroke()
 
   -- Loop 2
-  screen.move(0, 30)
+  screen.move(0, 20)
   screen.text("L2")
   local start_x2 = scale_value(loop_values[2].start, 0, 5, 15, 127)
   local end_x2 = scale_value(loop_values[2].end_, 0, 5, 15, 127)
-  screen.move(start_x2, 30)
-  screen.line(end_x2, 30)
+  screen.move(start_x2, 20)
+  screen.line(end_x2, 20)
   screen.stroke()
 
   -- Draw file info text
   screen.level(8)
-  screen.move(0, 58)
+  screen.move(0, 35)
   screen.text(get_filename_from_path(audio_file))
+
+  -- Pattern Time Messages
+  screen.level(15)
+  screen.move(0, 50)
+  screen.text(pattern_message)
+  screen.move(0, 60)
+  screen.text(erase_message)
+  -- Note: overdub_message might not fit on screen.
+
   screen.update()
 end
