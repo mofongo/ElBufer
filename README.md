@@ -1,5 +1,7 @@
 # El Búfer
 
+Script for the Norns and Arc devices
+
 1 buffer, two voices, 4 encoders
 [YouTube Demo](https://www.youtube.com/watch?v=cIfsTTv7MLU)
 
